@@ -97,8 +97,100 @@
             losses: []
         };
 
-        // Carregar do Firebase ao iniciar
-        async function loadConfig() {
+        // Carregar do Firebase ao iniciar 
+async function loadConfig() {
+    try {
+        const docRef = doc(db, "settings", "global");
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            // MERGE SEGURO: Garante que os arrays existam mesmo se o doc estiver vazio
+            localConfig = {
+                gains: data.gains || [],
+                losses: data.losses || []
+            };
+        } else {
+            console.log("Documento não existe, usando arrays vazios.");
+            localConfig = { gains: [], losses: [] };
+        }
+        
+        renderTables();
+        
+    } catch (error) {
+        console.error("Erro ao carregar:", error);
+        alert("Erro ao ler configuração. Abra o console (F12) para ver detalhes.");
+    }
+}
+
+        // Renderizar Tabelas
+        function renderTables() {
+            const gainsBody = document.querySelector('#gains-table tbody');
+            const lossesBody = document.querySelector('#losses-table tbody');
+            
+            gainsBody.innerHTML = '';
+            lossesBody.innerHTML = '';
+
+            localConfig.gains.forEach((item, index) => {
+                gainsBody.innerHTML += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>+${item.points}</td>
+                        <td>${item.maxPerWeek}</td>
+                        <td><button class="btn-delete" onclick="window.deleteItem('gain', ${index})">🗑️</button></td>
+                    </tr>`;
+            });
+
+            localConfig.losses.forEach((item, index) => {
+                lossesBody.innerHTML += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td>-${item.points}</td>
+                        <td><button class="btn-delete" onclick="window.deleteItem('loss', ${index})">🗑️</button></td>
+                    </tr>`;
+            });
+        }
+
+        // Adicionar item (Local)
+        window.addItem = (type) => {
+            const name = document.getElementById(type === 'gain' ? 'new-gain-name' : 'new-loss-name').value;
+            const points = parseInt(document.getElementById(type === 'gain' ? 'new-gain-points' : 'new-loss-points').value);
+            
+            if (!name || !points) return alert("Preencha nome e pontos!");
+
+            const id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "_");
+
+            if (type === 'gain') {
+                const max = parseInt(document.getElementById('new-gain-max').value) || 7;
+                localConfig.gains.push({ id, name, points, maxPerWeek: max });
+            } else {
+                localConfig.losses.push({ id, name, points });
+            }
+            
+            renderTables();
+            // Limpar inputs
+            document.getElementById(type === 'gain' ? 'new-gain-name' : 'new-loss-name').value = '';
+            document.getElementById(type === 'gain' ? 'new-gain-points' : 'new-loss-points').value = '';
+        };
+
+        // Deletar item (Local)
+        window.deleteItem = (type, index) => {
+            if(type === 'gain') localConfig.gains.splice(index, 1);
+            else localConfig.losses.splice(index, 1);
+            renderTables();
+        };
+
+        // Salvar no Firebase
+        window.saveConfig = async () => {
             try {
-                const docRef = doc(db, "settings", "global");
-                const
+                await setDoc(doc(db, "settings", "global"), localConfig);
+                alert("Configuração salva com sucesso! A página principal será atualizada automaticamente.");
+            } catch (e) {
+                alert("Erro ao salvar: " + e.message);
+            }
+        };
+
+        loadConfig();
+    </script>
+</body>
+</html>
