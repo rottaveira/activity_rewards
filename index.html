@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Recompensas</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --danger-color: #f44336;
+            --bg-color: #f4f4f9;
+            --card-bg: #ffffff;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 100px; /* Espaço para o rodapé fixo */
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            margin-top: 30px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .gain-title { color: var(--primary-color); }
+        .loss-title { color: var(--danger-color); }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin: 15px 0;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .card-info {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .activity-name {
+            font-size: 1.1em;
+            font-weight: bold;
+            display: block;
+        }
+
+        .activity-value {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            width: 35px;
+            height: 35px;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.2em;
+            cursor: pointer;
+            color: white;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        
+        .btn-minus { background-color: #999; }
+        .btn-plus-gain { background-color: var(--primary-color); }
+        .btn-plus-loss { background-color: var(--danger-color); }
+
+        input[type="number"] {
+            width: 50px;
+            text-align: center;
+            font-size: 1.2em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px;
+        }
+
+        /* Rodapé Fixo para o Total */
+        .total-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 0;
+            text-align: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+            font-size: 1.5em;
+            z-index: 100;
+        }
+
+        #final-score {
+            font-weight: bold;
+            color: #ffeb3b;
+        }
+
+        @media (max-width: 600px) {
+            .card { flex-direction: column; align-items: flex-start; }
+            .controls { width: 100%; justify-content: space-between; margin-top: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Quadro de Recompensas</h1>
+        <p style="text-align: center; color: #666;">Ajuste a quantidade de vezes que cada tarefa foi realizada.</p>
+
+        <h2 class="section-title gain-title">Atividades (Ganhar Pontos)</h2>
+        <div id="gains-list"></div>
+
+        <h2 class="section-title loss-title">Infrações (Perder Pontos)</h2>
+        <div id="losses-list"></div>
+    </div>
+
+    <div class="total-bar">
+        Saldo Total: <span id="final-score">0</span>
+    </div>
+
+    <script>
+        // CONFIGURAÇÃO DOS VALORES
+        // Você pode editar os valores "points" abaixo conforme necessário
+        const rules = {
+            gains: [
+                { name: "Retirar o Lixo", points: 5 },
+                { name: "Lavar a Louça", points: 10 },
+                { name: "Arrumar o Quarto", points: 10 },
+                { name: "Arrumar Guarda-Roupa", points: 15 },
+                { name: "Lavar Banheiro", points: 20 },
+                { name: "Fazer Comida", points: 15 },
+                { name: "Organizar / Geral", points: 5 }
+            ],
+            losses: [
+                { name: "Esquecer os Materiais", points: 5 },
+                { name: "Não fazer Tarefas de Casa", points: 10 },
+                { name: "Roupas/Sapatos Jogados", points: 5 },
+                { name: "Brigar com o Irmão", points: 20 },
+                { name: "Reclamações da Escola/Externas", points: 15 },
+                { name: "Lixo/Louça pela Casa", points: 5 }
+            ]
+        };
+
+        // Estado inicial (quantidades)
+        const state = {};
+
+        // Inicializa o estado com 0 para tudo
+        [...rules.gains, ...rules.losses].forEach(item => {
+            state[item.name] = 0;
+        });
+
+        function renderItem(item, type) {
+            const div = document.createElement('div');
+            div.className = 'card';
+            
+            const isGain = type === 'gain';
+            const sign = isGain ? '+' : '-';
+            const btnClass = isGain ? 'btn-plus-gain' : 'btn-plus-loss';
+
+            div.innerHTML = `
+                <div class="card-info">
+                    <span class="activity-name">${item.name}</span>
+                    <span class="activity-value">Valor unitário: ${sign}${item.points}</span>
+                </div>
+                <div class="controls">
+                    <button class="btn-minus" onclick="update('${item.name}', -1)">-</button>
+                    <input type="number" id="input-${item.name.replace(/\s+/g, '-')}" value="0" readonly>
+                    <button class="${btnClass}" onclick="update('${item.name}', 1)">+</button>
+                </div>
+            `;
+            return div;
+        }
+
+        function renderLists() {
+            const gainsContainer = document.getElementById('gains-list');
+            const lossesContainer = document.getElementById('losses-list');
+
+            rules.gains.forEach(item => {
+                gainsContainer.appendChild(renderItem(item, 'gain'));
+            });
+
+            rules.losses.forEach(item => {
+                lossesContainer.appendChild(renderItem(item, 'loss'));
+            });
+        }
+
+        function update(name, change) {
+            // Atualiza o estado
+            if (state[name] + change >= 0) {
+                state[name] += change;
+            }
+            
+            // Atualiza o input visualmente
+            const inputId = `input-${name.replace(/\s+/g, '-')}`;
+            document.getElementById(inputId).value = state[name];
+
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let total = 0;
+
+            // Soma Ganhos
+            rules.gains.forEach(item => {
+                total += (state[item.name] * item.points);
+            });
+
+            // Subtrai Perdas
+            rules.losses.forEach(item => {
+                total -= (state[item.name] * item.points);
+            });
+
+            const totalEl = document.getElementById('final-score');
+            totalEl.textContent = total;
+
+            // Muda cor do saldo se for negativo
+            if (total < 0) {
+                totalEl.style.color = '#ff6b6b';
+            } else {
+                totalEl.style.color = '#ffeb3b';
+            }
+        }
+
+        // Inicializa a página
+        renderLists();
+    </script>
+</body>
+</html>
