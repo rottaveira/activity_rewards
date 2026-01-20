@@ -79,6 +79,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // 1. CONFIGURAÇÃO (Seu projeto)
         const firebaseConfig = {
             apiKey: "AIzaSyC2SDS3gipLUEM3wQmg1CianfBJjygPc1w",
             authDomain: "activity-reward.firebaseapp.com",
@@ -88,108 +89,139 @@
             appId: "1:325930358747:web:fa715288fb000ebde939fe"
         };
 
+        // Inicializa Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Estado local da configuração
-        let localConfig = {
-            gains: [],
-            losses: []
-        };
+        // Estado local
+        let localConfig = { gains: [], losses: [] };
 
-        // Carregar do Firebase ao iniciar 
-async function loadConfig() {
-    try {
-        const docRef = doc(db, "settings", "global");
-        const docSnap = await getDoc(docRef);
+        // 2. FUNÇÕES EXPOSTAS AO WINDOW (Para o HTML enxergar)
         
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            // MERGE SEGURO: Garante que os arrays existam mesmo se o doc estiver vazio
-            localConfig = {
-                gains: data.gains || [],
-                losses: data.losses || []
-            };
-        } else {
-            console.log("Documento não existe, usando arrays vazios.");
-            localConfig = { gains: [], losses: [] };
-        }
-        
-        renderTables();
-        
-    } catch (error) {
-        console.error("Erro ao carregar:", error);
-        alert("Erro ao ler configuração. Abra o console (F12) para ver detalhes.");
-    }
-}
-
-        // Renderizar Tabelas
-        function renderTables() {
-            const gainsBody = document.querySelector('#gains-table tbody');
-            const lossesBody = document.querySelector('#losses-table tbody');
-            
-            gainsBody.innerHTML = '';
-            lossesBody.innerHTML = '';
-
-            localConfig.gains.forEach((item, index) => {
-                gainsBody.innerHTML += `
-                    <tr>
-                        <td>${item.name}</td>
-                        <td>+${item.points}</td>
-                        <td>${item.maxPerWeek}</td>
-                        <td><button class="btn-delete" onclick="window.deleteItem('gain', ${index})">🗑️</button></td>
-                    </tr>`;
-            });
-
-            localConfig.losses.forEach((item, index) => {
-                lossesBody.innerHTML += `
-                    <tr>
-                        <td>${item.name}</td>
-                        <td>-${item.points}</td>
-                        <td><button class="btn-delete" onclick="window.deleteItem('loss', ${index})">🗑️</button></td>
-                    </tr>`;
-            });
-        }
-
-        // Adicionar item (Local)
+        // Função Add Item
         window.addItem = (type) => {
-            const name = document.getElementById(type === 'gain' ? 'new-gain-name' : 'new-loss-name').value;
-            const points = parseInt(document.getElementById(type === 'gain' ? 'new-gain-points' : 'new-loss-points').value);
+            // Seleciona os inputs baseados no tipo (gain ou loss)
+            const nameInput = document.getElementById(type === 'gain' ? 'new-gain-name' : 'new-loss-name');
+            const pointsInput = document.getElementById(type === 'gain' ? 'new-gain-points' : 'new-loss-points');
             
-            if (!name || !points) return alert("Preencha nome e pontos!");
+            const name = nameInput.value;
+            const points = parseInt(pointsInput.value);
+            
+            if (!name || isNaN(points)) return alert("Preencha nome e pontos corretamente!");
 
-            const id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "_");
+            // Cria ID único
+            const id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "_") + "_" + Date.now();
 
             if (type === 'gain') {
-                const max = parseInt(document.getElementById('new-gain-max').value) || 7;
+                const maxInput = document.getElementById('new-gain-max');
+                const max = parseInt(maxInput.value) || 7;
                 localConfig.gains.push({ id, name, points, maxPerWeek: max });
+                maxInput.value = ''; // Limpa input extra
             } else {
                 localConfig.losses.push({ id, name, points });
             }
             
             renderTables();
-            // Limpar inputs
-            document.getElementById(type === 'gain' ? 'new-gain-name' : 'new-loss-name').value = '';
-            document.getElementById(type === 'gain' ? 'new-gain-points' : 'new-loss-points').value = '';
+            
+            // Limpa inputs
+            nameInput.value = '';
+            pointsInput.value = '';
         };
 
-        // Deletar item (Local)
+        // Função Delete Item
         window.deleteItem = (type, index) => {
-            if(type === 'gain') localConfig.gains.splice(index, 1);
-            else localConfig.losses.splice(index, 1);
+            if (type === 'gain') {
+                localConfig.gains.splice(index, 1);
+            } else {
+                localConfig.losses.splice(index, 1);
+            }
             renderTables();
         };
 
-        // Salvar no Firebase
+        // Função Save Config
         window.saveConfig = async () => {
+            const btn = document.querySelector('.btn-save');
+            const originalText = btn.innerText;
+            btn.innerText = "Salvando...";
+            btn.disabled = true;
+
             try {
                 await setDoc(doc(db, "settings", "global"), localConfig);
-                alert("Configuração salva com sucesso! A página principal será atualizada automaticamente.");
+                alert("Salvo com sucesso!");
             } catch (e) {
+                console.error(e);
                 alert("Erro ao salvar: " + e.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         };
 
+        // 3. FUNÇÕES INTERNAS (Auxiliares)
+
+        async function loadConfig() {
+            console.log("Iniciando carregamento...");
+            try {
+                const docRef = doc(db, "settings", "global");
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    // Garante que arrays existam mesmo se o banco estiver vazio
+                    localConfig = {
+                        gains: data.gains || [],
+                        losses: data.losses || []
+                    };
+                } else {
+                    console.log("Configuração não existe, criando nova.");
+                    localConfig = { gains: [], losses: [] };
+                }
+                renderTables();
+            } catch (error) {
+                console.error("Erro crítico ao carregar:", error);
+                alert("Erro ao conectar no banco. Verifique o console.");
+            }
+        }
+
+        function renderTables() {
+            const gainsBody = document.querySelector('#gains-table tbody');
+            const lossesBody = document.querySelector('#losses-table tbody');
+            
+            // Limpa tabelas
+            gainsBody.innerHTML = '';
+            lossesBody.innerHTML = '';
+
+            // Renderiza Ganhos
+            if (localConfig.gains && localConfig.gains.length > 0) {
+                localConfig.gains.forEach((item, index) => {
+                    gainsBody.innerHTML += `
+                        <tr>
+                            <td>${item.name}</td>
+                            <td>+${item.points}</td>
+                            <td>${item.maxPerWeek || 7}</td>
+                            <td><button class="btn-delete" onclick="window.deleteItem('gain', ${index})">🗑️</button></td>
+                        </tr>`;
+                });
+            } else {
+                gainsBody.innerHTML = '<tr><td colspan="4" style="text-align:center">Nenhuma atividade cadastrada</td></tr>';
+            }
+
+            // Renderiza Perdas
+            if (localConfig.losses && localConfig.losses.length > 0) {
+                localConfig.losses.forEach((item, index) => {
+                    lossesBody.innerHTML += `
+                        <tr>
+                            <td>${item.name}</td>
+                            <td>-${item.points}</td>
+                            <td><button class="btn-delete" onclick="window.deleteItem('loss', ${index})">🗑️</button></td>
+                        </tr>`;
+                });
+            } else {
+                lossesBody.innerHTML = '<tr><td colspan="3" style="text-align:center">Nenhuma infração cadastrada</td></tr>';
+            }
+        }
+
+        // Inicia o sistema
         loadConfig();
     </script>
 </body>
