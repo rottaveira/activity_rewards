@@ -119,16 +119,31 @@
             }
         }
 
+   // Substitua APENAS a função setupEventsListener por esta:
         function setupEventsListener() {
             const q = query(collection(db, "events"), orderBy("timestamp", "asc"));
+            
+            // O onSnapshot aceita um segundo argumento: o callback de erro
             onSnapshot(q, (snapshot) => {
                 eventLog = [];
                 snapshot.forEach((doc) => {
                     eventLog.push({ firebaseId: doc.id, ...doc.data() });
                 });
+                
+                // SUCESSO: Esconde loading e mostra conteúdo
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('main-content').style.display = 'block';
                 renderLists();
+                
+            }, (error) => {
+                // ERRO: Mostra o problema na tela em vez de ficar carregando infinitamente
+                console.error("Erro no Firestore:", error);
+                const loadingDiv = document.getElementById('loading-screen');
+                loadingDiv.innerHTML = `
+                    <h3 style="color: red">Erro de Conexão</h3>
+                    <p>${error.message}</p>
+                    <p style="font-size:0.8em">Verifique o Console (F12) e se o Banco de Dados foi criado no Firebase Console.</p>
+                `;
             });
         }
 
