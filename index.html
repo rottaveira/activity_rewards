@@ -5,65 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Recompensas</title>
     <style>
-        /* Mesmos estilos anteriores */
-        :root { var(--primary-color: #4CAF50); var(--danger-color: #f44336); var(--bg-color: #f4f4f9); }
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; padding-bottom: 120px; }
+        :root { --primary-color: #4CAF50; --danger-color: #f44336; --bg-color: #f4f4f9; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-color); color: #333; margin: 0; padding: 20px; padding-bottom: 120px; }
         .container { max-width: 800px; margin: 0 auto; }
         
         .loading-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:999; display:flex; justify-content:center; align-items:center; flex-direction:column;}
         
+        /* DATE SELECTOR */
+        .date-selector { background: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 90; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-radius: 0 0 8px 8px; border-top: 4px solid var(--primary-color);}
+        .date-info { font-size: 0.85em; color: #666; margin-top: 5px; display: flex; justify-content: center; gap: 15px; }
+        .current-month-badge { background: #2c3e50; color: white; padding: 2px 8px; border-radius: 4px; }
+
+        /* CARDS */
         .card { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 15px 0; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
         .card-info { flex: 1; }
         .activity-name { font-size: 1.1em; font-weight: bold; display: block; }
         .activity-meta { font-size: 0.85em; color: #666; display: block; margin-top: 4px; }
-        .limit-badge { background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 5px; }
         
-        .controls { display: flex; gap: 10px; }
-        button { width: 40px; height: 40px; border: none; border-radius: 50%; font-size: 1.2em; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
-        button:disabled { background-color: #ccc !important; cursor: not-allowed; }
-        .btn-add-gain { background: #4CAF50; }
-        .btn-add-loss { background: #f44336; }
-        .btn-undo { background: #999; width: 30px; height: 30px; }
+        /* BADGES */
+        .badge { font-size: 0.75em; padding: 2px 6px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
+        .badge-limit { background: #e3f2fd; color: #1565c0; }
+        .badge-done { background: #4CAF50; color: white; }
+        .badge-blocked { background: #ffebee; color: #c62828; }
 
+        .controls { display: flex; gap: 10px; align-items: center; }
+        button { width: 40px; height: 40px; border: none; border-radius: 50%; font-size: 1.2em; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        button:active { transform: scale(0.95); }
+        button:disabled { background-color: #e0e0e0 !important; cursor: not-allowed; color: #999; }
+        
+        .btn-add-gain { background: var(--primary-color); }
+        .btn-add-loss { background: var(--danger-color); }
+        .btn-undo { background: #90a4ae; width: 32px; height: 32px; font-size: 1em; }
+
+        /* PROGRESS BAR */
         .progress-bar-bg { width: 100%; height: 6px; background: #eee; margin-top: 8px; border-radius: 3px; overflow: hidden; }
-        .progress-bar-fill { height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s; }
-        .progress-full { background: #ccc; }
+        .progress-bar-fill { height: 100%; background: var(--primary-color); width: 0%; transition: width 0.3s; }
+        .progress-full { background: #bbb; }
 
-        .total-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #2c3e50; color: white; padding: 15px 0; text-align: center; font-size: 1.5em; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
-        .date-selector { background: white; padding: 10px; text-align: center; position: sticky; top: 0; z-index: 90; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
+        /* FOOTER */
+        .total-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #2c3e50; color: white; padding: 15px 0; display: flex; flex-direction: column; align-items: center; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
+        .total-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; }
+        .total-value { font-size: 1.8em; font-weight: bold; color: #ffeb3b; }
+        .admin-link { margin-top: 5px; font-size: 0.7em; opacity: 0.5; color: white; text-decoration: none; }
     </style>
 </head>
 <body>
 
     <div id="loading-screen" class="loading-screen">
-        <h2>Carregando Sistema...</h2>
-        <p>Buscando regras e pontuação.</p>
+        <h2>Carregando...</h2>
     </div>
 
     <div class="container" id="main-content" style="display:none;">
-        <h1 style="text-align: center;">Quadro de Recompensas</h1>
+        <h1 style="text-align: center; color: #2c3e50; margin-bottom: 0;">Quadro de Tarefas</h1>
         
         <div class="date-selector">
-            <input type="date" id="current-date" style="padding: 8px; font-size: 1.1em;">
-            <div style="font-size: 0.8em; color: #666; margin-top: 5px;">Semana <span id="week-display">...</span></div>
+            <input type="date" id="current-date" style="padding: 8px; font-size: 1.1em; border: 1px solid #ccc; border-radius: 4px;">
+            <div class="date-info">
+                <span>Semana: <strong id="week-display">--</strong></span>
+                <span class="current-month-badge">Saldo de <span id="month-display">--</span></span>
+            </div>
         </div>
 
-        <h2 style="color: #4CAF50; border-bottom: 2px solid #ddd;">Atividades (Ganhos)</h2>
+        <h2 style="color: #4CAF50; border-bottom: 2px solid #ddd;">Atividades (Ganhar)</h2>
         <div id="gains-list"></div>
 
-        <h2 style="color: #f44336; border-bottom: 2px solid #ddd;">Infrações (Perdas)</h2>
+        <h2 style="color: #f44336; border-bottom: 2px solid #ddd;">Infrações (Perder)</h2>
         <div id="losses-list"></div>
     </div>
 
     <div class="total-bar">
-        Saldo Total: <span id="final-score" style="color: #ffeb3b; font-weight: bold;">...</span>
-        <div style="font-size: 0.4em; opacity: 0.7;"><a href="admin.html" style="color: white;">Configurações</a></div>
+        <span class="total-label">Saldo do Mês</span>
+        <span id="final-score" class="total-value">...</span>
+        <a href="admin.html" class="admin-link">Configurações</a>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // CONFIGURAÇÃO DO FIREBASE (Sua configuração existente)
         const firebaseConfig = {
             apiKey: "AIzaSyC2SDS3gipLUEM3wQmg1CianfBJjygPc1w",
             authDomain: "activity-reward.firebaseapp.com",
@@ -76,46 +96,37 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // VARIÁVEIS GLOBAIS
+        // ESTADO GLOBAL
         let config = { gains: [], losses: [] };
         let eventLog = [];
         
-        // Elementos DOM
         const dateInput = document.getElementById('current-date');
-        dateInput.valueAsDate = new Date();
+        dateInput.valueAsDate = new Date(); // Inicia com hoje
 
-        // 1. INICIALIZAÇÃO: Busca Configuração -> Depois ativa Listeners
+        // 1. INICIALIZAÇÃO
         async function initSystem() {
             try {
-                // Busca Configuração Global
+                // Busca Configuração
                 const configRef = doc(db, "settings", "global");
                 const configSnap = await getDoc(configRef);
 
                 if (configSnap.exists()) {
                     config = configSnap.data();
                 } else {
-                    // SEED INICIAL (Se não existir config, cria uma padrão)
-                    config = {
-                        gains: [
-                            { id: 'lixo', name: "Retirar o Lixo", points: 5, maxPerWeek: 3 },
-                            { id: 'louca', name: "Lavar a Louça", points: 10, maxPerWeek: 7 }
-                        ],
-                        losses: [
-                            { id: 'esquecer', name: "Esquecer Materiais", points: 5 }
-                        ]
-                    };
-                    await setDoc(configRef, config);
+                    // Fallback para evitar tela branca se não houver config
+                    config = { gains: [], losses: [] };
+                    console.warn("Nenhuma configuração encontrada no Firebase.");
                 }
 
-                // Inicia Listener de Eventos (Histórico)
+                // Inicia Listener Realtime
                 setupEventsListener();
                 
             } catch (e) {
-                alert("Erro crítico ao carregar sistema: " + e.message);
+                alert("Erro ao inicializar: " + e.message);
             }
         }
 
-        // 2. LISTENER DE DADOS (Realtime)
+        // 2. LISTENER DE EVENTOS
         function setupEventsListener() {
             const q = query(collection(db, "events"), orderBy("timestamp", "asc"));
             
@@ -125,109 +136,177 @@
                     eventLog.push({ firebaseId: doc.id, ...doc.data() });
                 });
                 
-                // Remove tela de loading e renderiza
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('main-content').style.display = 'block';
                 renderLists();
             });
         }
 
-        // Funções de Data
+        // 3. LÓGICA DE DATAS E FILTROS
         function getWeekNumber(dateStr) {
             const date = new Date(dateStr);
             const onejan = new Date(date.getFullYear(), 0, 1);
             const week = Math.ceil((((date - onejan) / 86400000) + onejan.getDay() + 1) / 7);
             return `${date.getFullYear()}-W${week}`;
         }
+
+        function getMonthKey(dateStr) {
+            // Retorna "2023-10" para agrupamento mensal
+            return dateStr.substring(0, 7);
+        }
+
+        // Verifica quantos feitos na semana específica
         function getWeeklyCount(activityId, weekStr) {
             return eventLog.filter(e => e.activityId === activityId && e.week === weekStr).length;
         }
 
-        // Lógica de Renderização
+        // Verifica se já foi feito HOJE (Regra de 1x ao dia)
+        function isDoneToday(activityId, dateStr) {
+            return eventLog.some(e => e.activityId === activityId && e.date === dateStr);
+        }
+
+        // Calcula Saldo MENSAL
+        function calculateMonthlyTotal(monthKey) {
+            let total = 0;
+            // Filtra apenas eventos que começam com "YYYY-MM"
+            const monthlyEvents = eventLog.filter(e => e.date.startsWith(monthKey));
+            
+            monthlyEvents.forEach(e => {
+                if (e.type === 'gain') total += e.points;
+                if (e.type === 'loss') total -= e.points;
+            });
+            return total;
+        }
+
+        // 4. RENDERIZAÇÃO
         window.renderLists = function() {
             const gainsContainer = document.getElementById('gains-list');
             const lossesContainer = document.getElementById('losses-list');
             const totalEl = document.getElementById('final-score');
+            
+            // Contexto Temporal Atual
             const dateStr = dateInput.value;
             const currentWeek = getWeekNumber(dateStr);
+            const currentMonthKey = getMonthKey(dateStr);
+
+            // Atualiza UI de Datas
+            document.getElementById('week-display').textContent = currentWeek.split('-')[1]; // Mostra só o número
             
-            document.getElementById('week-display').textContent = currentWeek;
+            // Formata nome do mês (ex: 2023-10 -> Outubro)
+            const [year, month] = currentMonthKey.split('-');
+            const monthName = new Date(year, month - 1).toLocaleString('pt-BR', { month: 'long' });
+            document.getElementById('month-display').textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
             gainsContainer.innerHTML = '';
             lossesContainer.innerHTML = '';
 
-            // Renderiza com base no config carregado do Firebase
-            config.gains.forEach(item => {
-                const count = getWeeklyCount(item.id, currentWeek);
-                const isLimitReached = count >= item.maxPerWeek;
-                const progress = Math.min((count / item.maxPerWeek) * 100, 100);
+            // RENDERIZA GANHOS
+            if(config.gains) {
+                config.gains.forEach(item => {
+                    const doneThisWeek = getWeeklyCount(item.id, currentWeek);
+                    const doneToday = isDoneToday(item.id, dateStr);
+                    
+                    const isWeeklyLimitReached = doneThisWeek >= item.maxPerWeek;
+                    
+                    // Bloqueia se: Já fez hoje OU estourou limite semanal
+                    const isDisabled = doneToday || isWeeklyLimitReached;
+                    
+                    // Define texto do badge
+                    let statusBadge = '';
+                    if (doneToday) statusBadge = '<span class="badge badge-done">Feito Hoje</span>';
+                    else if (isWeeklyLimitReached) statusBadge = '<span class="badge badge-blocked">Max Semanal</span>';
+                    
+                    const progress = Math.min((doneThisWeek / item.maxPerWeek) * 100, 100);
 
-                gainsContainer.innerHTML += `
-                    <div class="card">
-                        <div class="card-info">
-                            <span class="activity-name">${item.name} <span class="limit-badge">${count}/${item.maxPerWeek}</span></span>
-                            <span class="activity-meta">+${item.points} pts</span>
-                            <div class="progress-bar-bg"><div class="progress-bar-fill ${isLimitReached?'progress-full':''}" style="width:${progress}%"></div></div>
-                        </div>
-                        <div class="controls">
-                            <button class="btn-undo" onclick="removeLastEvent('${item.id}')">↺</button>
-                            <button class="btn-add-gain" onclick="addEvent('${item.id}', 'gain')" ${isLimitReached?'disabled':''}>+</button>
-                        </div>
-                    </div>`;
-            });
+                    gainsContainer.innerHTML += `
+                        <div class="card" style="${doneToday ? 'opacity: 0.7;' : ''}">
+                            <div class="card-info">
+                                <span class="activity-name">
+                                    ${item.name} 
+                                    <span class="badge badge-limit">${doneThisWeek}/${item.maxPerWeek}</span>
+                                    ${statusBadge}
+                                </span>
+                                <span class="activity-meta">+${item.points} pts</span>
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill ${isWeeklyLimitReached?'progress-full':''}" style="width:${progress}%"></div>
+                                </div>
+                            </div>
+                            <div class="controls">
+                                <button class="btn-undo" onclick="removeLastEvent('${item.id}')" title="Desfazer">↺</button>
+                                <button class="btn-add-gain" onclick="addEvent('${item.id}', 'gain')" ${isDisabled?'disabled':''}>+</button>
+                            </div>
+                        </div>`;
+                });
+            }
 
-            config.losses.forEach(item => {
-                lossesContainer.innerHTML += `
-                    <div class="card">
-                        <div class="card-info">
-                            <span class="activity-name">${item.name}</span>
-                            <span class="activity-meta">-${item.points} pts</span>
-                        </div>
-                        <div class="controls">
-                            <button class="btn-undo" onclick="removeLastEvent('${item.id}')">↺</button>
-                            <button class="btn-add-loss" onclick="addEvent('${item.id}', 'loss')">-</button>
-                        </div>
-                    </div>`;
-            });
+            // RENDERIZA PERDAS (Sem limite diário/semanal, mas entra no saldo mensal)
+            if(config.losses) {
+                config.losses.forEach(item => {
+                    lossesContainer.innerHTML += `
+                        <div class="card">
+                            <div class="card-info">
+                                <span class="activity-name">${item.name}</span>
+                                <span class="activity-meta">-${item.points} pts</span>
+                            </div>
+                            <div class="controls">
+                                <button class="btn-undo" onclick="removeLastEvent('${item.id}')">↺</button>
+                                <button class="btn-add-loss" onclick="addEvent('${item.id}', 'loss')">-</button>
+                            </div>
+                        </div>`;
+                });
+            }
 
-            // Calcula Total
-            let total = 0;
-            eventLog.forEach(e => {
-                if(e.type === 'gain') total += e.points;
-                if(e.type === 'loss') total -= e.points;
-            });
+            // Atualiza Saldo Mensal
+            const total = calculateMonthlyTotal(currentMonthKey);
             totalEl.textContent = total;
             totalEl.style.color = total < 0 ? '#ff6b6b' : '#ffeb3b';
         };
 
-        // Ações de Banco
+        // 5. AÇÕES (ADD / REMOVE)
         window.addEvent = async (itemId, type) => {
-            const item = (type==='gain'?config.gains:config.losses).find(i => i.id === itemId);
             const dateStr = dateInput.value;
             const week = getWeekNumber(dateStr);
+            const item = (type==='gain'?config.gains:config.losses).find(i => i.id === itemId);
 
-            if(type === 'gain' && getWeeklyCount(itemId, week) >= item.maxPerWeek) return alert("Limite Atingido");
+            // Validações de Backend (Segurança Client-side)
+            if (type === 'gain') {
+                if (isDoneToday(itemId, dateStr)) return alert("Esta atividade já foi realizada hoje!");
+                if (getWeeklyCount(itemId, week) >= item.maxPerWeek) return alert("Limite semanal atingido!");
+            }
 
-            await addDoc(collection(db, "events"), {
-                activityId: item.id,
-                name: item.name,
-                points: item.points,
-                date: dateStr,
-                week: week,
-                type: type,
-                timestamp: serverTimestamp()
-            });
+            // Botão Loading visual (opcional)
+            const btn = document.activeElement; // Pega o botão clicado
+            if(btn) btn.disabled = true;
+
+            try {
+                await addDoc(collection(db, "events"), {
+                    activityId: item.id,
+                    name: item.name,
+                    points: item.points,
+                    date: dateStr,
+                    week: week,
+                    type: type,
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) {
+                alert("Erro ao salvar: " + e.message);
+                if(btn) btn.disabled = false;
+            }
         };
 
         window.removeLastEvent = async (itemId) => {
-            const last = eventLog.filter(e => e.activityId === itemId).pop();
-            if(last && confirm(`Desfazer ${last.name}?`)) {
+            // Remove o último registro (independente da data, ou filtrado por data se preferir)
+            // Aqui removo o último REGISTRADO NO BANCO para aquela atividade, para permitir correção de erro
+            const history = eventLog.filter(e => e.activityId === itemId);
+            const last = history[history.length - 1]; // Pega o último array (ordenado por timestamp)
+
+            if(last && confirm(`Desfazer "${last.name}" do dia ${last.date.split('-').reverse().join('/')}?`)) {
                 await deleteDoc(doc(db, "events", last.firebaseId));
             }
         };
 
         dateInput.addEventListener('change', renderLists);
         
-        // Inicia tudo
         initSystem();
     </script>
 </body>
