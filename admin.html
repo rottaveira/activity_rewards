@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Configurar Regras</title>
+    <style>
+        :root { --primary: #2196F3; --bg: #f4f4f9; --text: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 900px; margin: 0 auto; }
+        h1, h2 { color: #2c3e50; }
+        
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+        
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        
+        button { cursor: pointer; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; }
+        .btn-save { background: #4CAF50; color: white; font-size: 1.2em; width: 100%; padding: 15px; margin-top: 20px; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-delete { background: #ff5252; color: white; width: auto; }
+        
+        .row-inputs { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-end; }
+        .input-group { flex: 1; }
+        .input-group label { display: block; font-size: 0.8em; margin-bottom: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>⚙️ Parametrização do Sistema</h1>
+    <p>Adicione ou remova atividades. Não esqueça de clicar em <strong>SALVAR TUDO</strong> no final.</p>
+
+    <div class="panel">
+        <h2>Atividades (Ganhos)</h2>
+        <div class="row-inputs">
+            <div class="input-group" style="flex: 3;">
+                <label>Nome da Tarefa</label>
+                <input type="text" id="new-gain-name" placeholder="Ex: Lavar o Carro">
+            </div>
+            <div class="input-group">
+                <label>Pontos</label>
+                <input type="number" id="new-gain-points" placeholder="Ex: 20">
+            </div>
+            <div class="input-group">
+                <label>Max/Semana</label>
+                <input type="number" id="new-gain-max" placeholder="Ex: 1">
+            </div>
+            <button class="btn-add" onclick="addItem('gain')">Adicionar</button>
+        </div>
+        <table id="gains-table">
+            <thead><tr><th>Nome</th><th>Pontos</th><th>Max/Sem</th><th>Ação</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="panel">
+        <h2>Infrações (Perdas)</h2>
+        <div class="row-inputs">
+            <div class="input-group" style="flex: 3;">
+                <label>Nome da Infração</label>
+                <input type="text" id="new-loss-name" placeholder="Ex: Gritar">
+            </div>
+            <div class="input-group">
+                <label>Penalidade</label>
+                <input type="number" id="new-loss-points" placeholder="Ex: 10">
+            </div>
+            <button class="btn-add" style="background: #ff9800" onclick="addItem('loss')">Adicionar</button>
+        </div>
+        <table id="losses-table">
+            <thead><tr><th>Nome</th><th>Pontos</th><th>Ação</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <button class="btn-save" onclick="saveConfig()">SALVAR TUDO NO FIREBASE</button>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC2SDS3gipLUEM3wQmg1CianfBJjygPc1w",
+            authDomain: "activity-reward.firebaseapp.com",
+            projectId: "activity-reward",
+            storageBucket: "activity-reward.firebasestorage.app",
+            messagingSenderId: "325930358747",
+            appId: "1:325930358747:web:fa715288fb000ebde939fe"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Estado local da configuração
+        let localConfig = {
+            gains: [],
+            losses: []
+        };
+
+        // Carregar do Firebase ao iniciar
+        async function loadConfig() {
+            try {
+                const docRef = doc(db, "settings", "global");
+                const
