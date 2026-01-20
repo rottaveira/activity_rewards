@@ -3,182 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Recompensas - Firebase Sync</title>
+    <title>Sistema de Recompensas</title>
     <style>
-        :root {
-            --primary-color: #4CAF50;
-            --danger-color: #f44336;
-            --bg-color: #f4f4f9;
-            --card-bg: #ffffff;
-            --text-color: #333;
-            --disabled-color: #ccc;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            padding-bottom: 120px;
-        }
-
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
+        /* Mesmos estilos anteriores */
+        :root { var(--primary-color: #4CAF50); var(--danger-color: #f44336); var(--bg-color: #f4f4f9); }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; padding-bottom: 120px; }
         .container { max-width: 800px; margin: 0 auto; }
-
-        /* Status de Conexão */
-        #connection-status {
-            text-align: center;
-            font-size: 0.8em;
-            margin-bottom: 10px;
-            color: #666;
-        }
-        .status-dot {
-            height: 10px; width: 10px;
-            background-color: #ccc;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-        .status-online { background-color: #4CAF50; }
-
-        /* Calendário */
-        .date-selector {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            text-align: center;
-            margin-bottom: 20px;
-            position: sticky;
-            top: 0;
-            z-index: 90;
-            border-bottom: 3px solid var(--primary-color);
-        }
-
-        .date-selector label { font-weight: bold; margin-right: 10px; }
-        .date-selector input { padding: 8px; font-size: 1.1em; border: 1px solid #ccc; border-radius: 4px; }
-
-        .section-title { margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 10px; font-size: 1.5em; }
-        .gain-title { color: var(--primary-color); }
-        .loss-title { color: var(--danger-color); }
-
-        /* Cards */
-        .card {
-            background: var(--card-bg);
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin: 15px 0;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .card-info { flex: 1; min-width: 200px; }
+        
+        .loading-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:999; display:flex; justify-content:center; align-items:center; flex-direction:column;}
+        
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 15px 0; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .card-info { flex: 1; }
         .activity-name { font-size: 1.1em; font-weight: bold; display: block; }
         .activity-meta { font-size: 0.85em; color: #666; display: block; margin-top: 4px; }
+        .limit-badge { background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 5px; }
         
-        .limit-badge {
-            background-color: #e3f2fd;
-            color: #1565c0;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            margin-left: 5px;
-        }
+        .controls { display: flex; gap: 10px; }
+        button { width: 40px; height: 40px; border: none; border-radius: 50%; font-size: 1.2em; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
+        button:disabled { background-color: #ccc !important; cursor: not-allowed; }
+        .btn-add-gain { background: #4CAF50; }
+        .btn-add-loss { background: #f44336; }
+        .btn-undo { background: #999; width: 30px; height: 30px; }
 
-        .controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+        .progress-bar-bg { width: 100%; height: 6px; background: #eee; margin-top: 8px; border-radius: 3px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s; }
+        .progress-full { background: #ccc; }
 
-        button {
-            width: 40px; height: 40px;
-            border: none; border-radius: 50%;
-            font-size: 1.2em; cursor: pointer; color: white;
-            transition: all 0.2s; display: flex; align-items: center; justify-content: center;
-        }
-
-        button:active { transform: scale(0.95); }
-        button:disabled { background-color: var(--disabled-color) !important; cursor: not-allowed; }
-        
-        .btn-add-gain { background-color: var(--primary-color); }
-        .btn-add-loss { background-color: var(--danger-color); }
-        .btn-undo { background-color: #999; width: 30px; height: 30px; font-size: 1em; }
-
-        /* Loading Overlay for Actions */
-        .loading { opacity: 0.5; pointer-events: none; }
-
-        /* Progress Bar */
-        .progress-bar-bg {
-            width: 100%; height: 6px; background-color: #eee;
-            border-radius: 3px; margin-top: 8px; overflow: hidden;
-        }
-        .progress-bar-fill {
-            height: 100%; background-color: var(--primary-color);
-            width: 0%; transition: width 0.3s ease;
-        }
-        .progress-full { background-color: var(--disabled-color); }
-
-        /* Footer */
-        .total-bar {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background-color: #2c3e50; color: white;
-            padding: 15px 0; display: flex; justify-content: space-around;
-            align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
-            z-index: 100;
-        }
-
-        .total-score { font-size: 1.5em; font-weight: bold; color: #ffeb3b; }
-        
-        @media (max-width: 600px) {
-            .card { flex-direction: column; align-items: flex-start; }
-            .controls { width: 100%; justify-content: flex-end; margin-top: 10px; }
-        }
+        .total-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #2c3e50; color: white; padding: 15px 0; text-align: center; font-size: 1.5em; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
+        .date-selector { background: white; padding: 10px; text-align: center; position: sticky; top: 0; z-index: 90; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;}
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Quadro de Recompensas</h1>
-        <div id="connection-status"><span class="status-dot"></span>Conectando ao banco de dados...</div>
+    <div id="loading-screen" class="loading-screen">
+        <h2>Carregando Sistema...</h2>
+        <p>Buscando regras e pontuação.</p>
+    </div>
+
+    <div class="container" id="main-content" style="display:none;">
+        <h1 style="text-align: center;">Quadro de Recompensas</h1>
         
         <div class="date-selector">
-            <label for="current-date">Data de Registro:</label>
-            <input type="date" id="current-date">
-            <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
-                Semana <span id="week-display">...</span>
-            </div>
+            <input type="date" id="current-date" style="padding: 8px; font-size: 1.1em;">
+            <div style="font-size: 0.8em; color: #666; margin-top: 5px;">Semana <span id="week-display">...</span></div>
         </div>
 
-        <h2 class="section-title gain-title">Atividades (Ganhos)</h2>
+        <h2 style="color: #4CAF50; border-bottom: 2px solid #ddd;">Atividades (Ganhos)</h2>
         <div id="gains-list"></div>
 
-        <h2 class="section-title loss-title">Infrações (Perdas)</h2>
+        <h2 style="color: #f44336; border-bottom: 2px solid #ddd;">Infrações (Perdas)</h2>
         <div id="losses-list"></div>
     </div>
 
     <div class="total-bar">
-        <div>
-            Saldo Total: <span id="final-score" class="total-score">...</span>
-        </div>
+        Saldo Total: <span id="final-score" style="color: #ffeb3b; font-weight: bold;">...</span>
+        <div style="font-size: 0.4em; opacity: 0.7;"><a href="admin.html" style="color: white;">Configurações</a></div>
     </div>
 
     <script type="module">
-        // Importa as funções necessárias do SDK v9
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { 
-            getFirestore, 
-            collection, 
-            addDoc, 
-            deleteDoc, 
-            doc, 
-            onSnapshot, 
-            query, 
-            orderBy,
-            serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // SUA CONFIGURAÇÃO
         const firebaseConfig = {
             apiKey: "AIzaSyC2SDS3gipLUEM3wQmg1CianfBJjygPc1w",
             authDomain: "activity-reward.firebaseapp.com",
@@ -188,207 +73,162 @@
             appId: "1:325930358747:web:fa715288fb000ebde939fe"
         };
 
-        // Inicializa Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const eventsCollection = collection(db, "events");
 
-        // --- CONFIGURAÇÃO DE REGRAS DO NEGÓCIO ---
-        const config = {
-            gains: [
-                { id: 'lixo', name: "Retirar o Lixo", points: 5, maxPerWeek: 3 },
-                { id: 'louca', name: "Lavar a Louça", points: 10, maxPerWeek: 7 },
-                { id: 'quarto', name: "Arrumar o Quarto", points: 10, maxPerWeek: 7 },
-                { id: 'guarda_roupa', name: "Arrumar Guarda-Roupa", points: 15, maxPerWeek: 1 },
-                { id: 'banheiro', name: "Lavar Banheiro", points: 20, maxPerWeek: 2 },
-                { id: 'comida', name: "Fazer Comida", points: 15, maxPerWeek: 5 },
-                { id: 'geral', name: "Organizar / Geral", points: 5, maxPerWeek: 10 }
-            ],
-            losses: [
-                { id: 'esquecer', name: "Esquecer Materiais", points: 5 },
-                { id: 'tarefas', name: "Não fazer Tarefas", points: 10 },
-                { id: 'roupas', name: "Roupas/Sapatos Jogados", points: 5 },
-                { id: 'briga', name: "Brigar com Irmão", points: 20 },
-                { id: 'reclamacao', name: "Reclamações Externas", points: 15 },
-                { id: 'bagunca', name: "Lixo/Louça pela Casa", points: 5 }
-            ]
-        };
-
-        // Estado Local (Sincronizado via Firestore)
+        // VARIÁVEIS GLOBAIS
+        let config = { gains: [], losses: [] };
         let eventLog = [];
-
+        
         // Elementos DOM
         const dateInput = document.getElementById('current-date');
-        const weekDisplay = document.getElementById('week-display');
-        const statusEl = document.getElementById('connection-status');
-        
-        // Define data inicial
         dateInput.valueAsDate = new Date();
-        dateInput.addEventListener('change', renderLists);
 
-        // --- FUNÇÕES UTILITÁRIAS ---
+        // 1. INICIALIZAÇÃO: Busca Configuração -> Depois ativa Listeners
+        async function initSystem() {
+            try {
+                // Busca Configuração Global
+                const configRef = doc(db, "settings", "global");
+                const configSnap = await getDoc(configRef);
+
+                if (configSnap.exists()) {
+                    config = configSnap.data();
+                } else {
+                    // SEED INICIAL (Se não existir config, cria uma padrão)
+                    config = {
+                        gains: [
+                            { id: 'lixo', name: "Retirar o Lixo", points: 5, maxPerWeek: 3 },
+                            { id: 'louca', name: "Lavar a Louça", points: 10, maxPerWeek: 7 }
+                        ],
+                        losses: [
+                            { id: 'esquecer', name: "Esquecer Materiais", points: 5 }
+                        ]
+                    };
+                    await setDoc(configRef, config);
+                }
+
+                // Inicia Listener de Eventos (Histórico)
+                setupEventsListener();
+                
+            } catch (e) {
+                alert("Erro crítico ao carregar sistema: " + e.message);
+            }
+        }
+
+        // 2. LISTENER DE DADOS (Realtime)
+        function setupEventsListener() {
+            const q = query(collection(db, "events"), orderBy("timestamp", "asc"));
+            
+            onSnapshot(q, (snapshot) => {
+                eventLog = [];
+                snapshot.forEach((doc) => {
+                    eventLog.push({ firebaseId: doc.id, ...doc.data() });
+                });
+                
+                // Remove tela de loading e renderiza
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                renderLists();
+            });
+        }
+
+        // Funções de Data
         function getWeekNumber(dateStr) {
             const date = new Date(dateStr);
             const onejan = new Date(date.getFullYear(), 0, 1);
             const week = Math.ceil((((date - onejan) / 86400000) + onejan.getDay() + 1) / 7);
             return `${date.getFullYear()}-W${week}`;
         }
-
         function getWeeklyCount(activityId, weekStr) {
             return eventLog.filter(e => e.activityId === activityId && e.week === weekStr).length;
         }
 
-        function calculateTotal() {
-            let total = 0;
-            eventLog.forEach(e => {
-                if (e.type === 'gain') total += e.points;
-                if (e.type === 'loss') total -= e.points;
-            });
-            return total;
-        }
-
-        // --- INTEGRAÇÃO FIREBASE ---
-
-        // Listener em Tempo Real (Lê o banco e atualiza sempre que algo mudar)
-        const q = query(eventsCollection, orderBy("timestamp", "asc"));
-        
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            eventLog = [];
-            snapshot.forEach((doc) => {
-                // Junta os dados com o ID do documento do Firestore (necessário para deletar)
-                eventLog.push({ firebaseId: doc.id, ...doc.data() });
-            });
-            
-            // Atualiza UI
-            renderLists();
-            
-            // Atualiza status
-            statusEl.innerHTML = '<span class="status-dot status-online"></span>Sincronizado (Online)';
-        }, (error) => {
-            console.error("Erro no Firebase:", error);
-            statusEl.innerHTML = `<span class="status-dot" style="background:red"></span>Erro: ${error.message}`;
-            if(error.code === 'permission-denied') {
-                alert("Erro de Permissão: Lembre-se de configurar as Regras no Firebase Console para 'allow read, write: if true;'");
-            }
-        });
-
-        // Adicionar Evento (Grava no Firebase)
-        window.addEvent = async (itemConfigId, type) => {
-            // Encontra o objeto de config original baseado no ID
-            const item = [...config.gains, ...config.losses].find(i => i.id === itemConfigId);
-            
-            const dateStr = dateInput.value;
-            const currentWeek = getWeekNumber(dateStr);
-
-            // Validação de Limite (Client-side)
-            if (type === 'gain') {
-                const count = getWeeklyCount(item.id, currentWeek);
-                if (count >= item.maxPerWeek) {
-                    alert(`Limite semanal atingido para "${item.name}" nesta semana!`);
-                    return;
-                }
-            }
-
-            try {
-                await addDoc(eventsCollection, {
-                    activityId: item.id,
-                    name: item.name,
-                    points: item.points,
-                    date: dateStr,
-                    week: currentWeek,
-                    type: type,
-                    timestamp: serverTimestamp() // Usa hora do servidor para ordenação
-                });
-            } catch (e) {
-                alert("Erro ao salvar: " + e.message);
-            }
-        };
-
-        // Remover Evento (Apaga do Firebase)
-        window.removeLastEvent = async (activityId) => {
-            // Acha o último evento dessa atividade no log local
-            // Como o log está ordenado por timestamp asc, pegamos o último do array
-            const candidates = eventLog.filter(e => e.activityId === activityId);
-            const lastEvent = candidates[candidates.length - 1];
-
-            if (lastEvent) {
-                if(confirm(`Desfazer "${lastEvent.name}" do dia ${lastEvent.date}?`)) {
-                    try {
-                        await deleteDoc(doc(db, "events", lastEvent.firebaseId));
-                    } catch (e) {
-                        alert("Erro ao deletar: " + e.message);
-                    }
-                }
-            } else {
-                alert("Nenhum registro encontrado para desfazer.");
-            }
-        };
-
-        // --- RENDERIZAÇÃO ---
-        // Exposta no escopo global para o HTML acessar (renderLists é chamada pelo onSnapshot)
+        // Lógica de Renderização
         window.renderLists = function() {
             const gainsContainer = document.getElementById('gains-list');
             const lossesContainer = document.getElementById('losses-list');
             const totalEl = document.getElementById('final-score');
+            const dateStr = dateInput.value;
+            const currentWeek = getWeekNumber(dateStr);
             
+            document.getElementById('week-display').textContent = currentWeek;
             gainsContainer.innerHTML = '';
             lossesContainer.innerHTML = '';
 
-            const selectedDate = dateInput.value;
-            const currentWeek = getWeekNumber(selectedDate);
-            document.getElementById('week-display').textContent = currentWeek;
-
-            // Renderiza Ganhos
+            // Renderiza com base no config carregado do Firebase
             config.gains.forEach(item => {
                 const count = getWeeklyCount(item.id, currentWeek);
                 const isLimitReached = count >= item.maxPerWeek;
-                const progressPercent = Math.min((count / item.maxPerWeek) * 100, 100);
+                const progress = Math.min((count / item.maxPerWeek) * 100, 100);
 
-                const div = document.createElement('div');
-                div.className = 'card';
-                div.innerHTML = `
-                    <div class="card-info">
-                        <span class="activity-name">${item.name} <span class="limit-badge">Max: ${item.maxPerWeek}/sem</span></span>
-                        <span class="activity-meta">Valor: +${item.points} | Realizado na semana: <strong>${count}</strong></span>
-                        <div class="progress-bar-bg">
-                            <div class="progress-bar-fill ${isLimitReached ? 'progress-full' : ''}" style="width: ${progressPercent}%"></div>
+                gainsContainer.innerHTML += `
+                    <div class="card">
+                        <div class="card-info">
+                            <span class="activity-name">${item.name} <span class="limit-badge">${count}/${item.maxPerWeek}</span></span>
+                            <span class="activity-meta">+${item.points} pts</span>
+                            <div class="progress-bar-bg"><div class="progress-bar-fill ${isLimitReached?'progress-full':''}" style="width:${progress}%"></div></div>
                         </div>
-                    </div>
-                    <div class="controls">
-                        <button class="btn-undo" onclick="removeLastEvent('${item.id}')" title="Desfazer último">↺</button>
-                        <button class="btn-add-gain" 
-                                onclick="addEvent('${item.id}', 'gain')" 
-                                ${isLimitReached ? 'disabled' : ''}>
-                                +
-                        </button>
-                    </div>
-                `;
-                gainsContainer.appendChild(div);
+                        <div class="controls">
+                            <button class="btn-undo" onclick="removeLastEvent('${item.id}')">↺</button>
+                            <button class="btn-add-gain" onclick="addEvent('${item.id}', 'gain')" ${isLimitReached?'disabled':''}>+</button>
+                        </div>
+                    </div>`;
             });
 
-            // Renderiza Perdas
             config.losses.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'card';
-                div.innerHTML = `
-                    <div class="card-info">
-                        <span class="activity-name">${item.name}</span>
-                        <span class="activity-meta">Penalidade: -${item.points}</span>
-                    </div>
-                    <div class="controls">
-                        <button class="btn-undo" onclick="removeLastEvent('${item.id}')" title="Desfazer último">↺</button>
-                        <button class="btn-add-loss" onclick="addEvent('${item.id}', 'loss')">-</button>
-                    </div>
-                `;
-                lossesContainer.appendChild(div);
+                lossesContainer.innerHTML += `
+                    <div class="card">
+                        <div class="card-info">
+                            <span class="activity-name">${item.name}</span>
+                            <span class="activity-meta">-${item.points} pts</span>
+                        </div>
+                        <div class="controls">
+                            <button class="btn-undo" onclick="removeLastEvent('${item.id}')">↺</button>
+                            <button class="btn-add-loss" onclick="addEvent('${item.id}', 'loss')">-</button>
+                        </div>
+                    </div>`;
             });
 
-            // Total
-            const total = calculateTotal();
+            // Calcula Total
+            let total = 0;
+            eventLog.forEach(e => {
+                if(e.type === 'gain') total += e.points;
+                if(e.type === 'loss') total -= e.points;
+            });
             totalEl.textContent = total;
             totalEl.style.color = total < 0 ? '#ff6b6b' : '#ffeb3b';
         };
 
+        // Ações de Banco
+        window.addEvent = async (itemId, type) => {
+            const item = (type==='gain'?config.gains:config.losses).find(i => i.id === itemId);
+            const dateStr = dateInput.value;
+            const week = getWeekNumber(dateStr);
+
+            if(type === 'gain' && getWeeklyCount(itemId, week) >= item.maxPerWeek) return alert("Limite Atingido");
+
+            await addDoc(collection(db, "events"), {
+                activityId: item.id,
+                name: item.name,
+                points: item.points,
+                date: dateStr,
+                week: week,
+                type: type,
+                timestamp: serverTimestamp()
+            });
+        };
+
+        window.removeLastEvent = async (itemId) => {
+            const last = eventLog.filter(e => e.activityId === itemId).pop();
+            if(last && confirm(`Desfazer ${last.name}?`)) {
+                await deleteDoc(doc(db, "events", last.firebaseId));
+            }
+        };
+
+        dateInput.addEventListener('change', renderLists);
+        
+        // Inicia tudo
+        initSystem();
     </script>
 </body>
 </html>
