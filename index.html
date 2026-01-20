@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Recompensas</title>
+    <title>Sistema de Recompensas - Com Calendário</title>
     <style>
         :root {
             --primary-color: #4CAF50;
@@ -11,6 +11,7 @@
             --bg-color: #f4f4f9;
             --card-bg: #ffffff;
             --text-color: #333;
+            --disabled-color: #ccc;
         }
 
         body {
@@ -19,17 +20,33 @@
             color: var(--text-color);
             margin: 0;
             padding: 20px;
-            padding-bottom: 100px; /* Espaço para o rodapé fixo */
+            padding-bottom: 120px;
         }
 
-        h1 {
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        /* Estilo do Calendário / Data */
+        .date-selector {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             text-align: center;
-            color: #2c3e50;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+            border-bottom: 3px solid var(--primary-color);
         }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
+        .date-selector label { font-weight: bold; margin-right: 10px; }
+        .date-selector input {
+            padding: 8px;
+            font-size: 1.1em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
 
         .section-title {
@@ -38,7 +55,6 @@
             padding-bottom: 10px;
             font-size: 1.5em;
         }
-
         .gain-title { color: var(--primary-color); }
         .loss-title { color: var(--danger-color); }
 
@@ -54,20 +70,17 @@
             flex-wrap: wrap;
         }
 
-        .card-info {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .activity-name {
-            font-size: 1.1em;
-            font-weight: bold;
-            display: block;
-        }
-
-        .activity-value {
-            font-size: 0.9em;
-            color: #666;
+        .card-info { flex: 1; min-width: 200px; }
+        .activity-name { font-size: 1.1em; font-weight: bold; display: block; }
+        .activity-meta { font-size: 0.85em; color: #666; display: block; margin-top: 4px; }
+        
+        .limit-badge {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 5px;
         }
 
         .controls {
@@ -78,32 +91,44 @@
         }
 
         button {
-            width: 35px;
-            height: 35px;
+            width: 40px;
+            height: 40px;
             border: none;
             border-radius: 50%;
             font-size: 1.2em;
             cursor: pointer;
             color: white;
-            transition: opacity 0.2s;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        button:hover { opacity: 0.8; }
+        button:active { transform: scale(0.95); }
+        button:disabled { background-color: var(--disabled-color) !important; cursor: not-allowed; }
         
-        .btn-minus { background-color: #999; }
-        .btn-plus-gain { background-color: var(--primary-color); }
-        .btn-plus-loss { background-color: var(--danger-color); }
+        .btn-add-gain { background-color: var(--primary-color); }
+        .btn-add-loss { background-color: var(--danger-color); }
+        .btn-undo { background-color: #999; width: 30px; height: 30px; font-size: 1em; }
 
-        input[type="number"] {
-            width: 50px;
-            text-align: center;
-            font-size: 1.2em;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 5px;
+        /* Barra de progresso visual para o limite */
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background-color: #eee;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
         }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-full { background-color: var(--disabled-color); }
 
-        /* Rodapé Fixo para o Total */
+        /* Rodapé */
         .total-bar {
             position: fixed;
             bottom: 0;
@@ -112,20 +137,22 @@
             background-color: #2c3e50;
             color: white;
             padding: 15px 0;
-            text-align: center;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
-            font-size: 1.5em;
             z-index: 100;
         }
 
-        #final-score {
-            font-weight: bold;
-            color: #ffeb3b;
+        .total-score { font-size: 1.5em; font-weight: bold; color: #ffeb3b; }
+        .btn-reset {
+            background: none; border: 1px solid #fff; font-size: 0.8em;
+            width: auto; height: auto; padding: 5px 10px; border-radius: 4px;
         }
 
         @media (max-width: 600px) {
             .card { flex-direction: column; align-items: flex-start; }
-            .controls { width: 100%; justify-content: space-between; margin-top: 15px; }
+            .controls { width: 100%; justify-content: flex-end; margin-top: 10px; }
         }
     </style>
 </head>
@@ -133,124 +160,208 @@
 
     <div class="container">
         <h1>Quadro de Recompensas</h1>
-        <p style="text-align: center; color: #666;">Ajuste a quantidade de vezes que cada tarefa foi realizada.</p>
+        
+        <div class="date-selector">
+            <label for="current-date">Data de Registro:</label>
+            <input type="date" id="current-date">
+            <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
+                Semana <span id="week-display">...</span>
+            </div>
+        </div>
 
-        <h2 class="section-title gain-title">Atividades (Ganhar Pontos)</h2>
+        <h2 class="section-title gain-title">Atividades (Ganhos)</h2>
         <div id="gains-list"></div>
 
-        <h2 class="section-title loss-title">Infrações (Perder Pontos)</h2>
+        <h2 class="section-title loss-title">Infrações (Perdas)</h2>
         <div id="losses-list"></div>
     </div>
 
     <div class="total-bar">
-        Saldo Total: <span id="final-score">0</span>
+        <div>
+            Saldo: <span id="final-score" class="total-score">0</span>
+        </div>
+        <button class="btn-reset" onclick="resetData()">Zerar Dados</button>
     </div>
 
     <script>
-        // CONFIGURAÇÃO DOS VALORES
-        // Você pode editar os valores "points" abaixo conforme necessário
-        const rules = {
+        // --- CONFIGURAÇÃO ---
+        // Aqui definimos os pontos e o 'maxPerWeek' (n vezes na semana)
+        const config = {
             gains: [
-                { name: "Retirar o Lixo", points: 5 },
-                { name: "Lavar a Louça", points: 10 },
-                { name: "Arrumar o Quarto", points: 10 },
-                { name: "Arrumar Guarda-Roupa", points: 15 },
-                { name: "Lavar Banheiro", points: 20 },
-                { name: "Fazer Comida", points: 15 },
-                { name: "Organizar / Geral", points: 5 }
+                { id: 'lixo', name: "Retirar o Lixo", points: 5, maxPerWeek: 3 },
+                { id: 'louca', name: "Lavar a Louça", points: 10, maxPerWeek: 7 }, // Todo dia
+                { id: 'quarto', name: "Arrumar o Quarto", points: 10, maxPerWeek: 7 },
+                { id: 'guarda_roupa', name: "Arrumar Guarda-Roupa", points: 15, maxPerWeek: 1 },
+                { id: 'banheiro', name: "Lavar Banheiro", points: 20, maxPerWeek: 2 },
+                { id: 'comida', name: "Fazer Comida", points: 15, maxPerWeek: 5 },
+                { id: 'geral', name: "Organizar / Geral", points: 5, maxPerWeek: 10 }
             ],
             losses: [
-                { name: "Esquecer os Materiais", points: 5 },
-                { name: "Não fazer Tarefas de Casa", points: 10 },
-                { name: "Roupas/Sapatos Jogados", points: 5 },
-                { name: "Brigar com o Irmão", points: 20 },
-                { name: "Reclamações da Escola/Externas", points: 15 },
-                { name: "Lixo/Louça pela Casa", points: 5 }
+                { id: 'esquecer', name: "Esquecer Materiais", points: 5 },
+                { id: 'tarefas', name: "Não fazer Tarefas", points: 10 },
+                { id: 'roupas', name: "Roupas/Sapatos Jogados", points: 5 },
+                { id: 'briga', name: "Brigar com Irmão", points: 20 },
+                { id: 'reclamacao', name: "Reclamações Externas", points: 15 },
+                { id: 'bagunca', name: "Lixo/Louça pela Casa", points: 5 }
             ]
         };
 
-        // Estado inicial (quantidades)
-        const state = {};
+        // --- ESTADO E ARMAZENAMENTO ---
+        // O estado agora é um log de eventos: [{ activityId: 'lixo', date: '2023-10-01', points: 5, type: 'gain' }]
+        let eventLog = JSON.parse(localStorage.getItem('rewardSystemLog')) || [];
 
-        // Inicializa o estado com 0 para tudo
-        [...rules.gains, ...rules.losses].forEach(item => {
-            state[item.name] = 0;
-        });
+        // --- DATAS E SEMANAS ---
+        const dateInput = document.getElementById('current-date');
+        
+        // Define data de hoje no input ao carregar
+        dateInput.valueAsDate = new Date();
 
-        function renderItem(item, type) {
-            const div = document.createElement('div');
-            div.className = 'card';
-            
-            const isGain = type === 'gain';
-            const sign = isGain ? '+' : '-';
-            const btnClass = isGain ? 'btn-plus-gain' : 'btn-plus-loss';
+        dateInput.addEventListener('change', renderLists);
 
-            div.innerHTML = `
-                <div class="card-info">
-                    <span class="activity-name">${item.name}</span>
-                    <span class="activity-value">Valor unitário: ${sign}${item.points}</span>
-                </div>
-                <div class="controls">
-                    <button class="btn-minus" onclick="update('${item.name}', -1)">-</button>
-                    <input type="number" id="input-${item.name.replace(/\s+/g, '-')}" value="0" readonly>
-                    <button class="${btnClass}" onclick="update('${item.name}', 1)">+</button>
-                </div>
-            `;
-            return div;
+        function getWeekNumber(dateStr) {
+            const date = new Date(dateStr);
+            // Ajuste simples para semana (domingo a sabado ou segunda a domingo)
+            // Usando ISO week logic simplificada para string "Ano-Semana"
+            const onejan = new Date(date.getFullYear(), 0, 1);
+            const week = Math.ceil((((date - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+            return `${date.getFullYear()}-W${week}`;
         }
 
-        function renderLists() {
-            const gainsContainer = document.getElementById('gains-list');
-            const lossesContainer = document.getElementById('losses-list');
+        // --- LÓGICA PRINCIPAL ---
 
-            rules.gains.forEach(item => {
-                gainsContainer.appendChild(renderItem(item, 'gain'));
-            });
+        function addEvent(item, type) {
+            const dateStr = dateInput.value;
+            const currentWeek = getWeekNumber(dateStr);
 
-            rules.losses.forEach(item => {
-                lossesContainer.appendChild(renderItem(item, 'loss'));
-            });
-        }
-
-        function update(name, change) {
-            // Atualiza o estado
-            if (state[name] + change >= 0) {
-                state[name] += change;
+            // Validação de Limite para Ganhos
+            if (type === 'gain') {
+                const count = getWeeklyCount(item.id, currentWeek);
+                if (count >= item.maxPerWeek) {
+                    alert(`Limite semanal atingido para "${item.name}" nesta semana!`);
+                    return;
+                }
             }
-            
-            // Atualiza o input visualmente
-            const inputId = `input-${name.replace(/\s+/g, '-')}`;
-            document.getElementById(inputId).value = state[name];
 
-            calculateTotal();
+            // Adiciona ao log
+            eventLog.push({
+                id: Date.now(), // ID único para o evento (para poder remover depois se precisar)
+                activityId: item.id,
+                name: item.name,
+                points: item.points,
+                date: dateStr,
+                week: currentWeek,
+                type: type
+            });
+
+            saveAndRender();
+        }
+
+        function removeLastEvent(activityId) {
+            // Remove o último evento dessa atividade específica (útil para desfazer erro)
+            // Procura de trás para frente
+            for (let i = eventLog.length - 1; i >= 0; i--) {
+                if (eventLog[i].activityId === activityId) {
+                    eventLog.splice(i, 1);
+                    break;
+                }
+            }
+            saveAndRender();
+        }
+
+        function getWeeklyCount(activityId, weekStr) {
+            return eventLog.filter(e => e.activityId === activityId && e.week === weekStr).length;
         }
 
         function calculateTotal() {
             let total = 0;
-
-            // Soma Ganhos
-            rules.gains.forEach(item => {
-                total += (state[item.name] * item.points);
+            eventLog.forEach(e => {
+                if (e.type === 'gain') total += e.points;
+                if (e.type === 'loss') total -= e.points;
             });
+            return total;
+        }
 
-            // Subtrai Perdas
-            rules.losses.forEach(item => {
-                total -= (state[item.name] * item.points);
-            });
+        function saveAndRender() {
+            localStorage.setItem('rewardSystemLog', JSON.stringify(eventLog));
+            renderLists();
+        }
 
-            const totalEl = document.getElementById('final-score');
-            totalEl.textContent = total;
-
-            // Muda cor do saldo se for negativo
-            if (total < 0) {
-                totalEl.style.color = '#ff6b6b';
-            } else {
-                totalEl.style.color = '#ffeb3b';
+        function resetData() {
+            if(confirm("Tem certeza que deseja apagar todo o histórico?")) {
+                eventLog = [];
+                saveAndRender();
             }
         }
 
-        // Inicializa a página
+        // --- RENDERIZAÇÃO ---
+
+        function renderLists() {
+            const gainsContainer = document.getElementById('gains-list');
+            const lossesContainer = document.getElementById('losses-list');
+            const totalEl = document.getElementById('final-score');
+            const weekDisplay = document.getElementById('week-display');
+
+            gainsContainer.innerHTML = '';
+            lossesContainer.innerHTML = '';
+
+            const selectedDate = dateInput.value;
+            const currentWeek = getWeekNumber(selectedDate);
+            weekDisplay.textContent = currentWeek;
+
+            // Renderiza Ganhos
+            config.gains.forEach(item => {
+                const count = getWeeklyCount(item.id, currentWeek);
+                const isLimitReached = count >= item.maxPerWeek;
+                const progressPercent = Math.min((count / item.maxPerWeek) * 100, 100);
+
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.innerHTML = `
+                    <div class="card-info">
+                        <span class="activity-name">${item.name} <span class="limit-badge">Max: ${item.maxPerWeek}/sem</span></span>
+                        <span class="activity-meta">Valor: +${item.points} | Realizado na semana: <strong>${count}</strong></span>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill ${isLimitReached ? 'progress-full' : ''}" style="width: ${progressPercent}%"></div>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn-undo" onclick="removeLastEvent('${item.id}')" title="Desfazer último">↺</button>
+                        <button class="btn-add-gain" 
+                                onclick='addEvent(${JSON.stringify(item)}, "gain")' 
+                                ${isLimitReached ? 'disabled' : ''}>
+                                +
+                        </button>
+                    </div>
+                `;
+                gainsContainer.appendChild(div);
+            });
+
+            // Renderiza Perdas (Logica mais simples)
+            config.losses.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.innerHTML = `
+                    <div class="card-info">
+                        <span class="activity-name">${item.name}</span>
+                        <span class="activity-meta">Penalidade: -${item.points}</span>
+                    </div>
+                    <div class="controls">
+                        <button class="btn-undo" onclick="removeLastEvent('${item.id}')" title="Desfazer último">↺</button>
+                        <button class="btn-add-loss" onclick='addEvent(${JSON.stringify(item)}, "loss")'>-</button>
+                    </div>
+                `;
+                lossesContainer.appendChild(div);
+            });
+
+            // Atualiza Total
+            const total = calculateTotal();
+            totalEl.textContent = total;
+            totalEl.style.color = total < 0 ? '#ff6b6b' : '#ffeb3b';
+        }
+
+        // Inicializa
         renderLists();
+
     </script>
 </body>
 </html>
