@@ -1,0 +1,21 @@
+:root { --primary: #2196F3; --bg: #f4f4f9; --text: #333; }
+body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 900px; margin: 0 auto; }
+h1, h2 { color: #2c3e50; }
+
+.panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
+th { background-color: #f8f9fa; }
+
+/* Input com step decimal */
+input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+
+button { cursor: pointer; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; }
+.btn-save { background: #4CAF50; color: white; font-size: 1.2em; width: 100%; padding: 15px; margin-top: 20px; }
+.btn-add { background: var(--primary); color: white; }
+.btn-delete { background: #ff5252; color: white; width: auto; }
+
+.row-inputs { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-end; }
+.input-group { flex: 1; }
+.input-group label { display: block; font-size: 0.8em; margin-bottom: 5px; font-weight: bold; }

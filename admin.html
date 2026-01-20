@@ -4,29 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Configurar Valores</title>
-    <style>
-        :root { --primary: #2196F3; --bg: #f4f4f9; --text: #333; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; max-width: 900px; margin: 0 auto; }
-        h1, h2 { color: #2c3e50; }
-        
-        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #ddd; }
-        th { background-color: #f8f9fa; }
-        
-        /* Input com step decimal */
-        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
-        
-        button { cursor: pointer; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; }
-        .btn-save { background: #4CAF50; color: white; font-size: 1.2em; width: 100%; padding: 15px; margin-top: 20px; }
-        .btn-add { background: var(--primary); color: white; }
-        .btn-delete { background: #ff5252; color: white; width: auto; }
-        
-        .row-inputs { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-end; }
-        .input-group { flex: 1; }
-        .input-group label { display: block; font-size: 0.8em; margin-bottom: 5px; font-weight: bold; }
-    </style>
+    <link rel="stylesheet" href="css/admin-styles.css">
 </head>
 <body>
     <h1>⚙️ Parametrização Financeira</h1>
@@ -74,114 +52,8 @@
         </table>
     </div>
 
-    <button class="btn-save" onclick="window.saveConfig()">SALVAR TUDO NO FIREBASE</button>
+    <button class="btn-save" onclick="window.saveConfig()">SALVAR</button>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        // CONFIGURAÇÃO DO FIREBASE
-        const firebaseConfig = {
-            apiKey: "AIzaSyC2SDS3gipLUEM3wQmg1CianfBJjygPc1w",
-            authDomain: "activity-reward.firebaseapp.com",
-            projectId: "activity-reward",
-            storageBucket: "activity-reward.firebasestorage.app",
-            messagingSenderId: "325930358747",
-            appId: "1:325930358747:web:fa715288fb000ebde939fe"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        let localConfig = { gains: [], losses: [] };
-
-        // Formatador de Moeda
-        const moneyFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-
-        window.addItem = (type) => {
-            const nameInput = document.getElementById(type === 'gain' ? 'new-gain-name' : 'new-loss-name');
-            const pointsInput = document.getElementById(type === 'gain' ? 'new-gain-points' : 'new-loss-points');
-            
-            const name = nameInput.value;
-            // MUDANÇA: parseFloat para aceitar decimais
-            const points = parseFloat(pointsInput.value.replace(',', '.')); // Aceita vírgula trocando por ponto
-            
-            if (!name || isNaN(points)) return alert("Preencha nome e valor corretamente!");
-
-            const id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "_") + "_" + Date.now();
-
-            if (type === 'gain') {
-                const maxInput = document.getElementById('new-gain-max');
-                const max = parseInt(maxInput.value) || 7;
-                localConfig.gains.push({ id, name, points, maxPerWeek: max });
-                maxInput.value = '';
-            } else {
-                localConfig.losses.push({ id, name, points });
-            }
-            
-            renderTables();
-            nameInput.value = '';
-            pointsInput.value = '';
-        };
-
-        window.deleteItem = (type, index) => {
-            if (type === 'gain') localConfig.gains.splice(index, 1);
-            else localConfig.losses.splice(index, 1);
-            renderTables();
-        };
-
-        window.saveConfig = async () => {
-            const btn = document.querySelector('.btn-save');
-            btn.innerText = "Salvando...";
-            try {
-                await setDoc(doc(db, "settings", "global"), localConfig);
-                alert("Salvo com sucesso!");
-            } catch (e) {
-                alert("Erro: " + e.message);
-            } finally {
-                btn.innerText = "SALVAR TUDO NO FIREBASE";
-            }
-        };
-
-        async function loadConfig() {
-            try {
-                const docSnap = await getDoc(doc(db, "settings", "global"));
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    localConfig = { gains: data.gains || [], losses: data.losses || [] };
-                }
-                renderTables();
-            } catch (error) {
-                console.error(error);
-            }
-        }
-
-        function renderTables() {
-            const gainsBody = document.querySelector('#gains-table tbody');
-            const lossesBody = document.querySelector('#losses-table tbody');
-            gainsBody.innerHTML = '';
-            lossesBody.innerHTML = '';
-
-            localConfig.gains.forEach((item, index) => {
-                gainsBody.innerHTML += `
-                    <tr>
-                        <td>${item.name}</td>
-                        <td style="color: green; font-weight:bold;">${moneyFmt.format(item.points)}</td>
-                        <td>${item.maxPerWeek || 7}x</td>
-                        <td><button class="btn-delete" onclick="window.deleteItem('gain', ${index})">🗑️</button></td>
-                    </tr>`;
-            });
-
-            localConfig.losses.forEach((item, index) => {
-                lossesBody.innerHTML += `
-                    <tr>
-                        <td>${item.name}</td>
-                        <td style="color: red; font-weight:bold;">${moneyFmt.format(item.points * -1)}</td> <td><button class="btn-delete" onclick="window.deleteItem('loss', ${index})">🗑️</button></td>
-                    </tr>`;
-            });
-        }
-
-        loadConfig();
-    </script>
+    <script type="module" src="js/admin-script.js"></script>
 </body>
 </html>
