@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Recompensas - Com Calendário</title>
+    <title>Sistema de Recompensas - Firebase Sync</title>
     <style>
         :root {
             --primary-color: #4CAF50;
@@ -24,10 +24,25 @@
         }
 
         h1 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
-
         .container { max-width: 800px; margin: 0 auto; }
 
-        /* Estilo do Calendário / Data */
+        /* Status de Conexão */
+        #connection-status {
+            text-align: center;
+            font-size: 0.8em;
+            margin-bottom: 10px;
+            color: #666;
+        }
+        .status-dot {
+            height: 10px; width: 10px;
+            background-color: #ccc;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-online { background-color: #4CAF50; }
+
+        /* Calendário */
         .date-selector {
             background: white;
             padding: 15px;
@@ -42,22 +57,13 @@
         }
 
         .date-selector label { font-weight: bold; margin-right: 10px; }
-        .date-selector input {
-            padding: 8px;
-            font-size: 1.1em;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
+        .date-selector input { padding: 8px; font-size: 1.1em; border: 1px solid #ccc; border-radius: 4px; }
 
-        .section-title {
-            margin-top: 30px;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 10px;
-            font-size: 1.5em;
-        }
+        .section-title { margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 10px; font-size: 1.5em; }
         .gain-title { color: var(--primary-color); }
         .loss-title { color: var(--danger-color); }
 
+        /* Cards */
         .card {
             background: var(--card-bg);
             border-radius: 8px;
@@ -83,25 +89,13 @@
             margin-left: 5px;
         }
 
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
+        .controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
 
         button {
-            width: 40px;
-            height: 40px;
-            border: none;
-            border-radius: 50%;
-            font-size: 1.2em;
-            cursor: pointer;
-            color: white;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 40px; height: 40px;
+            border: none; border-radius: 50%;
+            font-size: 1.2em; cursor: pointer; color: white;
+            transition: all 0.2s; display: flex; align-items: center; justify-content: center;
         }
 
         button:active { transform: scale(0.95); }
@@ -111,45 +105,31 @@
         .btn-add-loss { background-color: var(--danger-color); }
         .btn-undo { background-color: #999; width: 30px; height: 30px; font-size: 1em; }
 
-        /* Barra de progresso visual para o limite */
+        /* Loading Overlay for Actions */
+        .loading { opacity: 0.5; pointer-events: none; }
+
+        /* Progress Bar */
         .progress-bar-bg {
-            width: 100%;
-            height: 6px;
-            background-color: #eee;
-            border-radius: 3px;
-            margin-top: 8px;
-            overflow: hidden;
+            width: 100%; height: 6px; background-color: #eee;
+            border-radius: 3px; margin-top: 8px; overflow: hidden;
         }
         .progress-bar-fill {
-            height: 100%;
-            background-color: var(--primary-color);
-            width: 0%;
-            transition: width 0.3s ease;
+            height: 100%; background-color: var(--primary-color);
+            width: 0%; transition: width 0.3s ease;
         }
         .progress-full { background-color: var(--disabled-color); }
 
-        /* Rodapé */
+        /* Footer */
         .total-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: #2c3e50;
-            color: white;
-            padding: 15px 0;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background-color: #2c3e50; color: white;
+            padding: 15px 0; display: flex; justify-content: space-around;
+            align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
             z-index: 100;
         }
 
         .total-score { font-size: 1.5em; font-weight: bold; color: #ffeb3b; }
-        .btn-reset {
-            background: none; border: 1px solid #fff; font-size: 0.8em;
-            width: auto; height: auto; padding: 5px 10px; border-radius: 4px;
-        }
-
+        
         @media (max-width: 600px) {
             .card { flex-direction: column; align-items: flex-start; }
             .controls { width: 100%; justify-content: flex-end; margin-top: 10px; }
@@ -160,6 +140,7 @@
 
     <div class="container">
         <h1>Quadro de Recompensas</h1>
+        <div id="connection-status"><span class="status-dot"></span>Conectando ao banco de dados...</div>
         
         <div class="date-selector">
             <label for="current-date">Data de Registro:</label>
@@ -178,18 +159,45 @@
 
     <div class="total-bar">
         <div>
-            Saldo: <span id="final-score" class="total-score">0</span>
+            Saldo Total: <span id="final-score" class="total-score">...</span>
         </div>
-        <button class="btn-reset" onclick="resetData()">Zerar Dados</button>
     </div>
 
-    <script>
-        // --- CONFIGURAÇÃO ---
-        // Aqui definimos os pontos e o 'maxPerWeek' (n vezes na semana)
+    <script type="module">
+        // Importa as funções necessárias do SDK v9
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            deleteDoc, 
+            doc, 
+            onSnapshot, 
+            query, 
+            orderBy,
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // SUA CONFIGURAÇÃO
+        const firebaseConfig = {
+            apiKey: "AIzaSyC2SDS3gipLUEM3wQmg1CianfBJjygPc1w",
+            authDomain: "activity-reward.firebaseapp.com",
+            projectId: "activity-reward",
+            storageBucket: "activity-reward.firebasestorage.app",
+            messagingSenderId: "325930358747",
+            appId: "1:325930358747:web:fa715288fb000ebde939fe"
+        };
+
+        // Inicializa Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const eventsCollection = collection(db, "events");
+
+        // --- CONFIGURAÇÃO DE REGRAS DO NEGÓCIO ---
         const config = {
             gains: [
                 { id: 'lixo', name: "Retirar o Lixo", points: 5, maxPerWeek: 3 },
-                { id: 'louca', name: "Lavar a Louça", points: 10, maxPerWeek: 7 }, // Todo dia
+                { id: 'louca', name: "Lavar a Louça", points: 10, maxPerWeek: 7 },
                 { id: 'quarto', name: "Arrumar o Quarto", points: 10, maxPerWeek: 7 },
                 { id: 'guarda_roupa', name: "Arrumar Guarda-Roupa", points: 15, maxPerWeek: 1 },
                 { id: 'banheiro', name: "Lavar Banheiro", points: 20, maxPerWeek: 2 },
@@ -206,66 +214,24 @@
             ]
         };
 
-        // --- ESTADO E ARMAZENAMENTO ---
-        // O estado agora é um log de eventos: [{ activityId: 'lixo', date: '2023-10-01', points: 5, type: 'gain' }]
-        let eventLog = JSON.parse(localStorage.getItem('rewardSystemLog')) || [];
+        // Estado Local (Sincronizado via Firestore)
+        let eventLog = [];
 
-        // --- DATAS E SEMANAS ---
+        // Elementos DOM
         const dateInput = document.getElementById('current-date');
+        const weekDisplay = document.getElementById('week-display');
+        const statusEl = document.getElementById('connection-status');
         
-        // Define data de hoje no input ao carregar
+        // Define data inicial
         dateInput.valueAsDate = new Date();
-
         dateInput.addEventListener('change', renderLists);
 
+        // --- FUNÇÕES UTILITÁRIAS ---
         function getWeekNumber(dateStr) {
             const date = new Date(dateStr);
-            // Ajuste simples para semana (domingo a sabado ou segunda a domingo)
-            // Usando ISO week logic simplificada para string "Ano-Semana"
             const onejan = new Date(date.getFullYear(), 0, 1);
             const week = Math.ceil((((date - onejan) / 86400000) + onejan.getDay() + 1) / 7);
             return `${date.getFullYear()}-W${week}`;
-        }
-
-        // --- LÓGICA PRINCIPAL ---
-
-        function addEvent(item, type) {
-            const dateStr = dateInput.value;
-            const currentWeek = getWeekNumber(dateStr);
-
-            // Validação de Limite para Ganhos
-            if (type === 'gain') {
-                const count = getWeeklyCount(item.id, currentWeek);
-                if (count >= item.maxPerWeek) {
-                    alert(`Limite semanal atingido para "${item.name}" nesta semana!`);
-                    return;
-                }
-            }
-
-            // Adiciona ao log
-            eventLog.push({
-                id: Date.now(), // ID único para o evento (para poder remover depois se precisar)
-                activityId: item.id,
-                name: item.name,
-                points: item.points,
-                date: dateStr,
-                week: currentWeek,
-                type: type
-            });
-
-            saveAndRender();
-        }
-
-        function removeLastEvent(activityId) {
-            // Remove o último evento dessa atividade específica (útil para desfazer erro)
-            // Procura de trás para frente
-            for (let i = eventLog.length - 1; i >= 0; i--) {
-                if (eventLog[i].activityId === activityId) {
-                    eventLog.splice(i, 1);
-                    break;
-                }
-            }
-            saveAndRender();
         }
 
         function getWeeklyCount(activityId, weekStr) {
@@ -281,32 +247,96 @@
             return total;
         }
 
-        function saveAndRender() {
-            localStorage.setItem('rewardSystemLog', JSON.stringify(eventLog));
-            renderLists();
-        }
+        // --- INTEGRAÇÃO FIREBASE ---
 
-        function resetData() {
-            if(confirm("Tem certeza que deseja apagar todo o histórico?")) {
-                eventLog = [];
-                saveAndRender();
+        // Listener em Tempo Real (Lê o banco e atualiza sempre que algo mudar)
+        const q = query(eventsCollection, orderBy("timestamp", "asc"));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            eventLog = [];
+            snapshot.forEach((doc) => {
+                // Junta os dados com o ID do documento do Firestore (necessário para deletar)
+                eventLog.push({ firebaseId: doc.id, ...doc.data() });
+            });
+            
+            // Atualiza UI
+            renderLists();
+            
+            // Atualiza status
+            statusEl.innerHTML = '<span class="status-dot status-online"></span>Sincronizado (Online)';
+        }, (error) => {
+            console.error("Erro no Firebase:", error);
+            statusEl.innerHTML = `<span class="status-dot" style="background:red"></span>Erro: ${error.message}`;
+            if(error.code === 'permission-denied') {
+                alert("Erro de Permissão: Lembre-se de configurar as Regras no Firebase Console para 'allow read, write: if true;'");
             }
-        }
+        });
+
+        // Adicionar Evento (Grava no Firebase)
+        window.addEvent = async (itemConfigId, type) => {
+            // Encontra o objeto de config original baseado no ID
+            const item = [...config.gains, ...config.losses].find(i => i.id === itemConfigId);
+            
+            const dateStr = dateInput.value;
+            const currentWeek = getWeekNumber(dateStr);
+
+            // Validação de Limite (Client-side)
+            if (type === 'gain') {
+                const count = getWeeklyCount(item.id, currentWeek);
+                if (count >= item.maxPerWeek) {
+                    alert(`Limite semanal atingido para "${item.name}" nesta semana!`);
+                    return;
+                }
+            }
+
+            try {
+                await addDoc(eventsCollection, {
+                    activityId: item.id,
+                    name: item.name,
+                    points: item.points,
+                    date: dateStr,
+                    week: currentWeek,
+                    type: type,
+                    timestamp: serverTimestamp() // Usa hora do servidor para ordenação
+                });
+            } catch (e) {
+                alert("Erro ao salvar: " + e.message);
+            }
+        };
+
+        // Remover Evento (Apaga do Firebase)
+        window.removeLastEvent = async (activityId) => {
+            // Acha o último evento dessa atividade no log local
+            // Como o log está ordenado por timestamp asc, pegamos o último do array
+            const candidates = eventLog.filter(e => e.activityId === activityId);
+            const lastEvent = candidates[candidates.length - 1];
+
+            if (lastEvent) {
+                if(confirm(`Desfazer "${lastEvent.name}" do dia ${lastEvent.date}?`)) {
+                    try {
+                        await deleteDoc(doc(db, "events", lastEvent.firebaseId));
+                    } catch (e) {
+                        alert("Erro ao deletar: " + e.message);
+                    }
+                }
+            } else {
+                alert("Nenhum registro encontrado para desfazer.");
+            }
+        };
 
         // --- RENDERIZAÇÃO ---
-
-        function renderLists() {
+        // Exposta no escopo global para o HTML acessar (renderLists é chamada pelo onSnapshot)
+        window.renderLists = function() {
             const gainsContainer = document.getElementById('gains-list');
             const lossesContainer = document.getElementById('losses-list');
             const totalEl = document.getElementById('final-score');
-            const weekDisplay = document.getElementById('week-display');
-
+            
             gainsContainer.innerHTML = '';
             lossesContainer.innerHTML = '';
 
             const selectedDate = dateInput.value;
             const currentWeek = getWeekNumber(selectedDate);
-            weekDisplay.textContent = currentWeek;
+            document.getElementById('week-display').textContent = currentWeek;
 
             // Renderiza Ganhos
             config.gains.forEach(item => {
@@ -327,7 +357,7 @@
                     <div class="controls">
                         <button class="btn-undo" onclick="removeLastEvent('${item.id}')" title="Desfazer último">↺</button>
                         <button class="btn-add-gain" 
-                                onclick='addEvent(${JSON.stringify(item)}, "gain")' 
+                                onclick="addEvent('${item.id}', 'gain')" 
                                 ${isLimitReached ? 'disabled' : ''}>
                                 +
                         </button>
@@ -336,7 +366,7 @@
                 gainsContainer.appendChild(div);
             });
 
-            // Renderiza Perdas (Logica mais simples)
+            // Renderiza Perdas
             config.losses.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'card';
@@ -347,20 +377,17 @@
                     </div>
                     <div class="controls">
                         <button class="btn-undo" onclick="removeLastEvent('${item.id}')" title="Desfazer último">↺</button>
-                        <button class="btn-add-loss" onclick='addEvent(${JSON.stringify(item)}, "loss")'>-</button>
+                        <button class="btn-add-loss" onclick="addEvent('${item.id}', 'loss')">-</button>
                     </div>
                 `;
                 lossesContainer.appendChild(div);
             });
 
-            // Atualiza Total
+            // Total
             const total = calculateTotal();
             totalEl.textContent = total;
             totalEl.style.color = total < 0 ? '#ff6b6b' : '#ffeb3b';
-        }
-
-        // Inicializa
-        renderLists();
+        };
 
     </script>
 </body>
